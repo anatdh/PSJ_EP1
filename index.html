@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Personal Journey - Passion Finder</title>
+  <meta name="description" content="ค้นพบว่าชีวิตคุณเป็นคอนเทนต์อะไร">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel Standalone for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    #root {
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // Lucide Icons Components
+    const ChevronLeft = () => (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    );
+
+    const ChevronRight = () => (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 18 15 12 9 6"></polyline>
+      </svg>
+    );
+
+    function PassionFinder() {
+      const [page, setPage] = useState(0);
+      const [ans, setAns] = useState({name:'',q1:'',q2:'',q3:'',q4:['','',''],q5:'',q6:'',q7:''});
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState({
+        quoteEn: 'YOU TURN DAILY ROUTINES INTO CONTENT WORTH WATCHING',
+        quoteTh: 'คุณเปลี่ยนกิจวัตรประจำวันให้เป็นคอนเทนต์ที่คนอยากดู',
+        brandSentence: 'ผมช่วยคนที่อยากสร้างคอนเทนต์จากชีวิตจริง ให้เริ่มจากสิ่งที่ทำอยู่แล้วทุกวัน',
+        contentBuckets: ['Daily Essentials – สิ่งที่ทำซ้ำและได้ผล', 'Fix & Upgrade – แก้ปัญหาที่เจอทุกวัน', 'Weekly Rituals – สิ่งที่รอคอยและมีความหมาย'],
+        seriesName: 'Real Life, Real Content',
+        seriesFormat: 'POV + Voiceover (15-30 วิ): เริ่มจากปัญหา แสดงวิธีแก้ จบด้วย takeaway'
+      });
+
+      const analyze = async () => {
+        setLoading(true);
+        
+        // 1. ส่งข้อมูลไป Google Sheet
+        try {
+          await fetch("YOUR_GOOGLE_SHEET_SCRIPT_URL", { // ← เปลี่ยน URL นี้
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              timestamp: new Date().toISOString(),
+              name: ans.name,
+              q1: ans.q1,
+              q2: ans.q2,
+              q3: ans.q3,
+              q4: ans.q4.join(' | '),
+              q5: ans.q5,
+              q6: ans.q6,
+              q7: ans.q7
+            })
+          });
+        } catch (e) {
+          console.log("Google Sheet save error:", e);
+        }
+        
+        // 2. วิเคราะห์ด้วย ChatGPT
+        try {
+          const res = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": "Bearer YOUR_OPENAI_API_KEY" // ← ใส่ API Key ของคุณ
+            },
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              temperature: 0.7,
+              response_format: { type: "json_object" },
+              messages: [{
+                role: "system",
+                content: "คุณเป็นที่ปรึกษาด้านการสร้างคอนเทนต์ วิเคราะห์คำตอบและตอบกลับเป็น JSON เท่านั้น ตามโครงสร้างที่กำหนด"
+              }, {
+                role: "user",
+                content: `วิเคราะห์คำตอบของ ${ans.name}:
+
+คำถามที่ 1 (สิ่งที่ชอบทำที่สุดใน 1 วัน): ${ans.q1}
+คำถามที่ 2 (สิ่งที่ไม่ชอบที่สุด): ${ans.q2}
+คำถามที่ 3 (สิ่งที่รอคอยใน 1 อาทิตย์): ${ans.q3}
+คำถามที่ 4 (3 กิจกรรมที่ชอบ): ${ans.q4.join(', ')}
+คำถามที่ 5 (ความฝัน): ${ans.q5}
+คำถามที่ 6 (ความถี่ที่ทำได้): ${ans.q6}
+คำถามที่ 7 (สิ่งที่ไม่อยากเป็น): ${ans.q7}
+
+จากคำตอบเหล่านี้ ให้วิเคราะห์และสร้าง:
+1. Quote ภาษาอังกฤษที่สะท้อนตัวตนของเขา (สั้น กระชับ เป็นประโยคเดียว)
+2. Quote ภาษาไทยที่แปลและเสริมความหมาย
+3. Brand Sentence คือประโยคที่อธิบายว่าเขาช่วยใครอย่างไร (เริ่มด้วย "ผมช่วย...")
+4. Content Buckets 3 หัวข้อที่เหมาะกับการสร้างคอนเทนต์
+5. Series Name ชื่อซีรีส์คอนเทนต์ที่น่าสนใจ
+6. Series Format รูปแบบและโครงสร้างของคอนเทนต์
+
+ตอบเป็น JSON format นี้เท่านั้น:
+{
+  "quoteEn": "สร้างประโยคภาษาอังกฤษสั้นๆ กระชับ",
+  "quoteTh": "แปลและเสริมความหมายเป็นภาษาไทย",
+  "brandSentence": "ผมช่วย...",
+  "contentBuckets": ["หัวข้อที่ 1", "หัวข้อที่ 2", "หัวข้อที่ 3"],
+  "seriesName": "ชื่อซีรีส์",
+  "seriesFormat": "รูปแบบและโครงสร้าง"
+}`
+              }]
+            })
+          });
+          
+          const data = await res.json();
+          
+          if (data.error) {
+            throw new Error(data.error.message);
+          }
+          
+          const content = data.choices[0].message.content;
+          const parsed = JSON.parse(content);
+          setResult(parsed);
+          
+        } catch (e) {
+          console.error("Analysis error:", e);
+          alert("เกิดข้อผิดพลาด: " + e.message);
+        }
+        
+        setTimeout(() => { setLoading(false); setPage(9); }, 3000);
+      };
+
+      const next = () => page === 8 ? analyze() : setPage(page + 1);
+      const back = () => page > 0 && !loading && setPage(page - 1);
+
+      if (page === 0) return (
+        <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center p-4">
+          <div className="max-w-sm w-full space-y-6 text-center">
+            <h1 className="text-2xl font-bold" style={{color: '#d4a5c3'}}>Your Personal Journey</h1>
+            <p className="text-sm leading-relaxed">ชีวิตคุณเป็นคอนเทนต์อะไร</p>
+            <button onClick={next} className="mt-6 w-12 h-12 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg transition-all duration-200 flex items-center justify-center mx-auto">
+              <ChevronRight />
+            </button>
+          </div>
+        </div>
+      );
+
+      if (page === 1) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">1/8</p>
+            <h2 className="text-lg font-bold mb-6">เริ่มจากชื่อของคุณก่อนนะ</h2>
+            <input 
+              type="text" 
+              value={ans.name} 
+              onChange={(e) => setAns({...ans, name: e.target.value})} 
+              placeholder="ชื่อหรือชื่อเล่นก็ได้" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.name.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 2) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">2/8</p>
+            <h2 className="text-lg font-bold mb-6">{ans.name} ใน 1 วัน อะไรคือสิ่งที่ชอบทำที่สุด</h2>
+            <textarea 
+              value={ans.q1} 
+              onChange={(e) => setAns({...ans, q1: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (สามารถเขียนได้หลายบรรทัด)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q1.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 3) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">3/8</p>
+            <h2 className="text-lg font-bold mb-6">{ans.name} ใน 1 วัน อะไรไม่ชอบมากที่สุด</h2>
+            <textarea 
+              value={ans.q2} 
+              onChange={(e) => setAns({...ans, q2: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (บอกให้ละเอียดได้เลย)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q2.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 4) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">4/8</p>
+            <h2 className="text-lg font-bold mb-3">{ans.name} สิ่งที่คุณ "รอคอย" ใน 1 อาทิตย์</h2>
+            <p className="text-xs text-gray-400 mb-4">(มากกว่า 1 ก็ได้)</p>
+            <textarea 
+              value={ans.q3} 
+              onChange={(e) => setAns({...ans, q3: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (เล่าให้ละเอียดได้)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q3.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 5) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">5/8</p>
+            <h2 className="text-lg font-bold mb-6">{ans.name} 3 อันดับ กิจกรรมที่คุณชอบที่สุด</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">1.</label>
+                <input 
+                  type="text" 
+                  value={ans.q4[0]} 
+                  onChange={(e) => {
+                    const newArr = [...ans.q4];
+                    newArr[0] = e.target.value;
+                    setAns({...ans, q4: newArr});
+                  }} 
+                  placeholder="กิจกรรมที่ 1 (เช่น เซ็ตผม แต่งหน้า)" 
+                  className="w-full p-2.5 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">2.</label>
+                <input 
+                  type="text" 
+                  value={ans.q4[1]} 
+                  onChange={(e) => {
+                    const newArr = [...ans.q4];
+                    newArr[1] = e.target.value;
+                    setAns({...ans, q4: newArr});
+                  }} 
+                  placeholder="กิจกรรมที่ 2 (เช่น แต่งตัว เลือกชุด)" 
+                  className="w-full p-2.5 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">3.</label>
+                <input 
+                  type="text" 
+                  value={ans.q4[2]} 
+                  onChange={(e) => {
+                    const newArr = [...ans.q4];
+                    newArr[2] = e.target.value;
+                    setAns({...ans, q4: newArr});
+                  }} 
+                  placeholder="กิจกรรมที่ 3 (เช่น ออกกำลังกาย วิ่ง)" 
+                  className="w-full p-2.5 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+              </div>
+            </div>
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!(ans.q4[0] && ans.q4[1] && ans.q4[2])} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 6) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">6/8</p>
+            <h2 className="text-lg font-bold mb-3">{ans.name} ความฝันที่อยากทำคืออะไร</h2>
+            <p className="text-xs text-gray-400 mb-4">(ถ้าไม่นับเรื่องเงิน)</p>
+            <textarea 
+              value={ans.q5} 
+              onChange={(e) => setAns({...ans, q5: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (บอกความฝันของคุณได้เลย)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q5.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 7) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">7/8</p>
+            <h2 className="text-lg font-bold mb-6">{ans.name} คุณน่าจะไม่มีเวลา...แต่อย่างน้อยทำได้กี่วัน/สัปดาห์</h2>
+            <textarea 
+              value={ans.q6} 
+              onChange={(e) => setAns({...ans, q6: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (บอกความถี่และอุปสรรค)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q6.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 8) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <button onClick={back} className="self-start mb-3 hover:scale-110 transition-transform duration-200">
+            <ChevronLeft />
+          </button>
+          <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
+            <p className="text-xs text-gray-500 mb-1">8/8</p>
+            <h2 className="text-lg font-bold mb-6">{ans.name} สิ่งที่คุณไม่อยากเป็นที่สุด</h2>
+            <textarea 
+              value={ans.q7} 
+              onChange={(e) => setAns({...ans, q7: e.target.value})} 
+              placeholder="พิมพ์คำตอบของคุณ... (บอกได้ตรงๆ เลย)" 
+              className="w-full p-3 bg-gray-900 rounded-lg border border-gray-700 focus:border-white outline-none text-sm min-h-20 resize-none"
+              autoComplete="off"
+              spellCheck="false"
+              autoFocus
+            />
+            <div className="flex justify-center mt-4">
+              <button onClick={next} disabled={!ans.q7.trim()} className="w-10 h-10 bg-white text-black rounded-full hover:scale-110 hover:shadow-lg disabled:opacity-30 disabled:hover:scale-100 transition-all duration-200 flex items-center justify-center">
+                <ChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (loading) return (
+        <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center p-4">
+          <div className="max-w-sm w-full space-y-6 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto"></div>
+            <div className="space-y-4 text-sm leading-relaxed mt-8">
+              <p>ต่อให้คุณเจอสิ่งที่ชอบ<br/>ก็ไม่มีประโยชน์ถ้าคุณไม่เริ่มทำ</p>
+              <p>สุดท้ายแล้ว passion<br/>มันจะเจอระหว่างทางเสมอ</p>
+              <p className="text-base font-bold mt-6">เลิกแคร์คนอื่น<br/>เพราะ 15 นาที<br/>เขาก็จะลืมเราแล้ว</p>
+            </div>
+          </div>
+        </div>
+      );
+
+      if (page === 9) return (
+        <div className="min-h-screen bg-black text-white flex flex-col p-4">
+          <div className="flex-1 flex flex-col justify-center items-center">
+            <div className="max-w-lg w-full space-y-8">
+              <div className="text-center space-y-3">
+                <h1 className="text-2xl font-bold leading-tight" style={{color: '#d4a5c3'}}>{result.quoteEn}</h1>
+                <p className="text-sm text-gray-400">{result.quoteTh}</p>
+              </div>
+              <div className="space-y-5 text-left">
+                <div>
+                  <h3 className="text-xs text-gray-500 mb-2">BRAND SENTENCE</h3>
+                  <p className="text-xs leading-relaxed">{result.brandSentence}</p>
+                </div>
+                <div>
+                  <h3 className="text-xs text-gray-500 mb-2">CONTENT BUCKETS</h3>
+                  <div className="space-y-1">{result.contentBuckets.map((b, i) => <p key={i} className="text-xs">• {b}</p>)}</div>
+                </div>
+                <div>
+                  <h3 className="text-xs text-gray-500 mb-2">SERIES ที่ควรเริ่ม</h3>
+                  <p className="text-xs font-semibold mb-1">{result.seriesName}</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">{result.seriesFormat}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 mt-6">
+            <button 
+              onClick={() => {
+                const el = document.querySelector('.max-w-lg');
+                if (!el) return;
+                import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm').then(module => {
+                  const html2canvas = module.default;
+                  html2canvas(el, { backgroundColor: '#000000', scale: 2 }).then(canvas => {
+                    canvas.toBlob(blob => {
+                      const file = new File([blob], 'my-passion.png', { type: 'image/png' });
+                      if (navigator.share && navigator.canShare({ files: [file] })) {
+                        navigator.share({ files: [file], title: 'My Passion Journey' });
+                      } else {
+                        const url = canvas.toDataURL();
+                        const link = document.createElement('a');
+                        link.download = 'my-passion.png';
+                        link.href = url;
+                        link.click();
+                      }
+                    });
+                  });
+                });
+              }}
+              className="px-4 py-2 bg-white text-black text-xs font-semibold rounded-full hover:scale-105 hover:shadow-lg transition-all duration-200"
+            >
+              💾 Save to Album
+            </button>
+            <button onClick={() => {setPage(0);setAns({name:'',q1:'',q2:'',q3:'',q4:['','',''],q5:'',q6:'',q7:''});}} className="px-4 py-2 border-2 border-white text-white text-xs font-semibold rounded-full hover:bg-white hover:text-black hover:scale-105 transition-all duration-200">เริ่มใหม่</button>
+          </div>
+        </div>
+      );
+
+      return null;
+    }
+
+    // Render the app
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PassionFinder />);
+  </script>
+</body>
+</html>
